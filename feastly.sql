@@ -639,10 +639,33 @@ select  ma.meal_id,
         MIN(submitted_price) as min_price_of_addons
 from meal_addons ma
 inner join meals m on m.id = ma.meal_id
-where m.is_active = true
-and m.is_public = true
-and m.is_cancelled = false
-and ma.visible = 1
+where ma.visible = 1
+and m.id in (
+  SELECT DISTINCT m.id
+  FROM meals m
+  INNER JOIN purchases p on p.meal_id = m.id
+  WHERE m.id in (
+    SELECT m.id AS meal_id
+    FROM meals m
+    LEFT JOIN purchases p ON p.meal_id = m.id
+    WHERE m.is_active = true
+    AND m.is_public = true
+    AND m.is_cancelled = false
+    AND m.meal_date <= DATE('2017-10-10')
+    AND m.meal_date >= created_date
+    AND p.id is NULL
+    UNION ALL
+    SELECT m.id AS meal_id
+    FROM meals m
+    LEFT JOIN purchases p ON p.meal_id = m.id AND (p.full_amount = 0 or p.number_of_seats = 0)
+    WHERE m.is_active = true
+    AND m.is_public = true
+    AND m.is_cancelled = false
+    AND m.meal_date <= DATE('2017-10-10')
+    AND m.meal_date >= created_date
+    AND p.id IS NULL
+  )
+)
 group by 1;
 
 
@@ -672,3 +695,37 @@ WHERE m.id in (
   AND p.id IS NULL
 )
 
+-- generate meal_is_interactive.csv
+select  m.id as meal_id,
+        CASE 
+          WHEN (m.title ilike '% class %' or m.title ilike '% teach %' or m.title ilike '% learn %' or m.title ilike '% concert %' or mu.about ilike '% class %' or mu.about ilike '% teach %' or mu.about ilike '% learn %' or mu.about ilike '% concert %' or mu.title ilike '% class %' or mu.title ilike '% teach %' or mu.title ilike '% learn %' or mu.title ilike '% concert %') THEN 1
+          ELSE 0
+        END as is_interactive
+from meals m
+inner join menus mu on m.menu_id = mu.id
+where m.id in (  
+  SELECT DISTINCT m.id
+  FROM meals m
+  INNER JOIN purchases p on p.meal_id = m.id
+  WHERE m.id in (
+    SELECT m.id AS meal_id
+    FROM meals m
+    LEFT JOIN purchases p ON p.meal_id = m.id
+    WHERE m.is_active = true
+    AND m.is_public = true
+    AND m.is_cancelled = false
+    AND m.meal_date <= DATE('2017-10-10')
+    AND m.meal_date >= created_date
+    AND p.id is NULL
+    UNION ALL
+    SELECT m.id AS meal_id
+    FROM meals m
+    LEFT JOIN purchases p ON p.meal_id = m.id AND (p.full_amount = 0 or p.number_of_seats = 0)
+    WHERE m.is_active = true
+    AND m.is_public = true
+    AND m.is_cancelled = false
+    AND m.meal_date <= DATE('2017-10-10')
+    AND m.meal_date >= created_date
+    AND p.id IS NULL
+  )
+);
