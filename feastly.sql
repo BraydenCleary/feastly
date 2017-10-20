@@ -458,9 +458,9 @@ GROUP BY 1,2,3,4;
 SELECT  z.meal_id,
         z.meal_seat_id,
         z.number_of_seats,
-        z.meal_date as meal_date,
         z.created_date as meal_created_date,
         z.purchase_date as meal_seat_purchased_date,
+        z.meal_date as meal_date,
         z.purchase_date - z.created_date as days_to_sell,
         COALESCE(z.ticket_price, x.avg_ticket_price) as ticket_price,
         x.percentage_of_seats_sold,
@@ -484,11 +484,32 @@ FROM (
             ROW_NUMBER() OVER(PARTITION BY m.id) as meal_seat_id
     FROM meals m
     INNER JOIN meals_seat_join mj on mj.meal_seat_count <= m.number_of_seats
-    WHERE is_public = true
-    AND is_cancelled = false
-    AND is_active = true
-    AND meal_date <= DATE('2017-10-10')
-    AND meal_date >= created_date
+    INNER JOIN (
+      SELECT DISTINCT m.id
+      FROM meals m
+      INNER JOIN purchases p on p.meal_id = m.id
+      WHERE m.id in (
+        SELECT m.id AS meal_id
+        FROM meals m
+        LEFT JOIN purchases p ON p.meal_id = m.id
+        WHERE m.is_active = true
+        AND m.is_public = true
+        AND m.is_cancelled = false
+        AND m.meal_date <= DATE('2017-10-10')
+        AND m.meal_date >= created_date
+        AND p.id is NULL
+        UNION ALL
+        SELECT m.id AS meal_id
+        FROM meals m
+        LEFT JOIN purchases p ON p.meal_id = m.id AND (p.full_amount = 0 or p.number_of_seats = 0)
+        WHERE m.is_active = true
+        AND m.is_public = true
+        AND m.is_cancelled = false
+        AND m.meal_date <= DATE('2017-10-10')
+        AND m.meal_date >= created_date
+        AND p.id IS NULL
+      )
+    ) good_meals on good_meals.id = m.id
   ) a
   LEFT JOIN (
     SELECT  p.meal_id,
@@ -534,9 +555,32 @@ LEFT JOIN (
                 ROW_NUMBER() OVER(PARTITION BY m.id) as meal_seat_id
         FROM meals m
         INNER JOIN meals_seat_join mj on mj.meal_seat_count <= m.number_of_seats
-        WHERE is_public = true
-        AND is_cancelled = false
-        AND is_active = true
+        INNER JOIN (
+          SELECT DISTINCT m.id
+          FROM meals m
+          INNER JOIN purchases p on p.meal_id = m.id
+          WHERE m.id in (
+            SELECT m.id AS meal_id
+            FROM meals m
+            LEFT JOIN purchases p ON p.meal_id = m.id
+            WHERE m.is_active = true
+            AND m.is_public = true
+            AND m.is_cancelled = false
+            AND m.meal_date <= DATE('2017-10-10')
+            AND m.meal_date >= created_date
+            AND p.id is NULL
+            UNION ALL
+            SELECT m.id AS meal_id
+            FROM meals m
+            LEFT JOIN purchases p ON p.meal_id = m.id AND (p.full_amount = 0 or p.number_of_seats = 0)
+            WHERE m.is_active = true
+            AND m.is_public = true
+            AND m.is_cancelled = false
+            AND m.meal_date <= DATE('2017-10-10')
+            AND m.meal_date >= created_date
+            AND p.id IS NULL
+          )
+        ) good_meals on good_meals.id = m.id
       ) a
       LEFT JOIN (
         SELECT  p.meal_id,
@@ -554,7 +598,7 @@ LEFT JOIN (
   GROUP BY 1,2,3,4
 ) x ON x.meal_id = z.meal_id
 where COALESCE(z.ticket_price, x.avg_ticket_price) IS NOT NULL
-order by z.meal_id desc;
+order by z.meal_id desc, meal_seat_purchased_date asc;
 
 -- delete irrelevant menu dishes
 
@@ -600,4 +644,31 @@ and m.is_public = true
 and m.is_cancelled = false
 and ma.visible = 1
 group by 1;
+
+
+-- THESE ARE THE MEALS I'LL BE LOOKING AT
+SELECT DISTINCT m.id
+FROM meals m
+INNER JOIN purchases p on p.meal_id = m.id
+WHERE m.id in (
+  SELECT m.id AS meal_id
+  FROM meals m
+  LEFT JOIN purchases p ON p.meal_id = m.id
+  WHERE m.is_active = true
+  AND m.is_public = true
+  AND m.is_cancelled = false
+  AND m.meal_date <= DATE('2017-10-10')
+  AND m.meal_date >= created_date
+  AND p.id is NULL
+  UNION ALL
+  SELECT m.id AS meal_id
+  FROM meals m
+  LEFT JOIN purchases p ON p.meal_id = m.id AND (p.full_amount = 0 or p.number_of_seats = 0)
+  WHERE m.is_active = true
+  AND m.is_public = true
+  AND m.is_cancelled = false
+  AND m.meal_date <= DATE('2017-10-10')
+  AND m.meal_date >= created_date
+  AND p.id IS NULL
+)
 
