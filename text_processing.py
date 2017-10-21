@@ -1,14 +1,15 @@
 from sklearn.decomposition import NMF
 import numpy as np
-from spacy.en import English
+import spacy
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS as stopwords
 
 import string
 
 punctuations = string.punctuation
 
-parser = English()
+parser = spacy.en.English()
 
+nlp = spacy.load("en")
 
 def run_sklearn_nmf(term_doc_matrix, feature_names, latent_feature_count=10):
     nmf = NMF(latent_feature_count)
@@ -27,6 +28,7 @@ def clean_text(text):
 
 def custom_tokenizer(sentence):
     tokens = parser(sentence)
+    # tokens = [tok for tok in tokens if tok.pos_ == 'VERB']
     tokens = [tok.lemma_.lower().strip() if (tok.lemma_ != "-PRON-") else tok.lower_ for tok in tokens]
     tokens = [clean_text(tok) for tok in tokens if (tok not in stopwords and tok not in punctuations)]
     return tokens

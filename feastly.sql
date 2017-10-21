@@ -457,6 +457,7 @@ GROUP BY 1,2,3,4;
 -- query to generate tickets.csv
 SELECT  z.meal_id,
         z.meal_seat_id,
+        z.menu_id as master_menu_id,
         z.number_of_seats,
         z.created_date as meal_created_date,
         z.purchase_date as meal_seat_purchased_date,
@@ -468,6 +469,7 @@ SELECT  z.meal_id,
 FROM (
   SELECT  a.meal_id,
           a.meal_seat_id,
+          a.menu_id,
           a.title,
           a.number_of_seats,
           a.created_date,
@@ -477,6 +479,7 @@ FROM (
           CASE WHEN b.ticket_price IS NULL THEN 0 ELSE 1 END as ticket_sold
   FROM (
     SELECT  m.id as meal_id,
+            m.menu_id as menu_id,
             m.title,
             m.number_of_seats,
             m.created_date,
